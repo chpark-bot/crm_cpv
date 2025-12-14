@@ -1,3 +1,18 @@
+# --- CSS Injection for Table Headers ---
+st.markdown("""
+<style>
+/* Streamlit DataFrame Header 셀을 타겟합니다. */
+.stDataFrame table thead th {
+    background-color: #8841FA !important; /* 배경색 적용 */
+    color: white !important; /* 글자색 흰색 적용 */
+}
+/* DataFrame 인덱스 헤더 셀을 타겟합니다. (숨김 처리되지 않은 경우) */
+.stDataFrame table thead th:first-child {
+    background-color: #8841FA !important;
+    color: white !important;
+}
+</style>
+""", unsafe_allow_html=True)
 import streamlit as st
 import pandas as pd
 from datetime import timedelta
@@ -5,9 +20,44 @@ import numpy as np
 import re
 import io 
 
-# --- 1. 대시보드 기본 설정 ---
+# 증감률에 따라 색상을 입히는 함수 정의
+def highlight_growth(val, color_positive='#c6efce', color_negative='#ffc7ce'):
+    """
+    DataFrame 셀의 값(%)에 따라 배경색을 결정합니다.
+    """
+    if isinstance(val, (int, float)):
+        # 색상 코드를 16진수 HEX 코드로 지정 (옅은 녹색, 옅은 빨간색)
+        if val > 0:
+            color = color_positive
+        elif val < 0:
+            color = color_negative
+        else:
+            color = ''
+        return f'background-color: {color}'
+    return ''
+
+# --- 1. 대시보드 기본 설정 및 CSS Injection ---
 st.set_page_config(layout="wide", page_title="[CRM] 이벤트별 CPV 성과분석 대시보드")
 st.title("[CRM] 이벤트별 CPV 성과분석 대시보드")
+
+# === 테이블 헤더 스타일 CSS Injection (추가된 부분) ===
+st.markdown("""
+<style>
+/* 모든 st.dataframe 테이블의 헤더 셀을 타겟합니다. */
+.stDataFrame table thead th {
+    background-color: #8841FA !important; /* 배경색 적용: 요청하신 보라색 */
+    color: white !important; /* 글자색: 흰색 */
+    /* 헤더 텍스트를 중앙 정렬할 수도 있습니다: text-align: center; */
+}
+/* DataFrame 인덱스 헤더 셀 (첫 번째 셀)도 스타일링합니다. */
+.stDataFrame table thead th:first-child {
+    background-color: #8841FA !important;
+    color: white !important;
+}
+</style>
+""", unsafe_allow_html=True)
+# =======================================================
+
 st.markdown("---")
 
 # 증감율 계산 함수 (문자열 포맷: +10.00%)
@@ -29,7 +79,7 @@ def calculate_rate_num(current, previous, change):
     else:
         return (change / previous) * 100
 
-# CSV 파일 다운로드를 위한 변환 함수 (새로운 캐시 함수 정의)
+# CSV 파일 다운로드를 위한 변환 함수 (캐시 함수 정의)
 @st.cache_data
 def convert_df_to_csv(df):
     # UTF-8 BOM 인코딩을 사용하여 엑셀에서 한글 깨짐 방지
@@ -234,6 +284,12 @@ if uploaded_file is not None:
         lambda row: f"{int(row['현재 매출']):,} 원 ({calculate_rate_str(row['현재 매출'], row['이전 매출'], row['매출 증감액'])})", 
         axis=1
     )
+    
+    # TOP 1 이벤트 데이터 추출 (11번 섹션 템플릿용)
+    top_revenue_data = event_analysis.sort_values(by='현재 매출', ascending=False).iloc[0]
+    top_revenue_name = top_revenue_data['이벤트명']
+    top_revenue_value = top_revenue_data['현재 매출']
+
 
     ranking_cols_views = ['이벤트명', '병원명', 'CPV 조회 수 (랭킹용)']
     ranking_cols_revenue = ['이벤트명', '병원명', 'CPV 매출 (랭킹용)']
@@ -274,6 +330,9 @@ if uploaded_file is not None:
     
     # 10-2. 다운로드 기능을 위한 데이터프레임 (순수 데이터로 준비)
     download_df = final_detailed_df.copy()
+    # 숫자형 컬럼을 정수/소수점으로 변환하여 포맷팅 제거
+    download_df['조회수'] = download_df['조회수'].round(0).astype(int)
+    download_df['조회수 증감량'] = download_df['조회수 증감량'].round(0).astype(int)
     download_df['CPV매출'] = download_df['CPV매출'].round(0).astype(int)
     download_df['CPV매출 증감액'] = download_df['CPV매출 증감액'].round(0).astype(int)
     download_df['조회수 증감률(%)'] = download_df['조회수 증감률(%)'].round(2)
@@ -287,16 +346,21 @@ if uploaded_file is not None:
         mime='text/csv',
     )
     
-    # DataFrame 포맷팅: 시각적으로 보여주기 위한 포맷
+    # DataFrame 포맷팅 및 스타일 적용 (요청하신 컬러 시각화)
+    styled_df = final_detailed_df.style.format({
+        '조회수': "{:,.0f}", 
+        '조회수 증감량': "{:+.0f}",
+        '조회수 증감률(%)': "{:+.2f}%",
+        'CPV매출': "{:,.0f} 원",
+        'CPV매출 증감액': "{:+.0f} 원",
+        'CPV매출 증감률(%)': "{:+.2f}%"
+    }).applymap(
+        highlight_growth, 
+        subset=['조회수 증감률(%)', 'CPV매출 증감률(%)']
+    )
+    
     st.dataframe(
-        final_detailed_df.style.format({
-            '조회수': "{:,.0f}", 
-            '조회수 증감량': "{:+.0f}",
-            '조회수 증감률(%)': "{:+.2f}%",
-            'CPV매출': "{:,.0f} 원",
-            'CPV매출 증감액': "{:+.0f} 원",
-            'CPV매출 증감률(%)': "{:+.2f}%"
-        }),
+        styled_df,
         use_container_width=True,
         hide_index=True
     )
@@ -310,11 +374,6 @@ if uploaded_file is not None:
     
     # 11-1. LLM에 전달할 데이터 준비 (템플릿용)
     if not event_analysis.empty:
-        # TOP 1 이벤트 데이터 추출 (9번 섹션에서 사용된 데이터 재활용)
-        top_revenue_data = event_analysis.sort_values(by='현재 매출', ascending=False).iloc[0]
-        top_revenue_name = top_revenue_data['이벤트명']
-        top_revenue_value = top_revenue_data['현재 매출']
-        
         ai_prompt_text = event_analysis[['이벤트명', '병원명', '현재 조회 수', '현재 매출', '조회수 증감률 (%)', '매출 증감률 (%)']].to_string(index=False)
         
         # --- LLM 인사이트 Placeholder ---
