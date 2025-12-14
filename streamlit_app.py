@@ -32,7 +32,6 @@ def calculate_rate_num(current, previous, change):
 # --- 2. 데이터 업로드 및 예시 파일 제공 ---
 
 # 2-1. 예시 CSV 파일 데이터 생성
-# 사용자님이 제공한 파일의 필수 컬럼 구조를 따릅니다.
 example_data = {
     '병원명': ['A병원', 'B병원', 'A병원', 'C병원'],
     '이벤트 ID': [1001, 1002, 1001, 1003],
@@ -43,10 +42,8 @@ example_data = {
 }
 example_df = pd.DataFrame(example_data)
 
-# CSV 파일 다운로드를 위한 변환 함수
 @st.cache_data
 def convert_df_to_csv(df):
-    # UTF-8 BOM 인코딩을 사용하여 엑셀에서 한글 깨짐 방지
     return df.to_csv(index=False, encoding='utf-8-sig')
 
 example_csv = convert_df_to_csv(example_df)
@@ -270,3 +267,22 @@ if uploaded_file is not None:
     }
 
     final_detailed_df = event_analysis[detailed_cols_map.keys()].rename(columns=detailed_cols_map)
+    
+    # DataFrame 포맷팅: CPV매출 컬럼 포맷 추가 반영
+    st.dataframe(
+        final_detailed_df.style.format({
+            '조회수': "{:,.0f}", 
+            '조회수 증감량': "{:+.0f}",
+            '조회수 증감률(%)': "{:+.2f}%",
+            'CPV매출': "{:,.0f} 원",
+            'CPV매출 증감액': "{:+.0f} 원",
+            'CPV매출 증감률(%)': "{:+.2f}%"
+        }),
+        use_container_width=True,
+        hide_index=True
+    )
+
+
+# 데이터가 업로드되지 않았을 때 안내 메시지
+else:
+    st.info("⬆️ 좌측 상단의 'Browse files' 버튼을 눌러 CSV 파일을 업로드하고 대시보드를 시작하세요.")
