@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import timedelta
 import numpy as np
 import re
+import io # 파일 다운로드를 위해 io 모듈 추가
 
 # --- 1. 대시보드 기본 설정 ---
 st.set_page_config(layout="wide", page_title="[CRM] 이벤트별 CPV 성과분석 대시보드")
@@ -28,8 +29,41 @@ def calculate_rate_num(current, previous, change):
     else:
         return (change / previous) * 100
 
-# --- 2. 데이터 업로드 ---
+# --- 2. 데이터 업로드 및 예시 파일 제공 ---
+
+# 2-1. 예시 CSV 파일 데이터 생성
+# 사용자님이 제공한 파일의 필수 컬럼 구조를 따릅니다.
+example_data = {
+    '병원명': ['A병원', 'B병원', 'A병원', 'C병원'],
+    '이벤트 ID': [1001, 1002, 1001, 1003],
+    '이벤트명': ['리프팅 런칭 이벤트', '필러 3CC 특가', '리프팅 런칭 이벤트', '여름 맞이 이벤트'],
+    '대상일': ['2025-08-01', '2025-08-01', '2025-08-02', '2025-09-15'],
+    'CPV 조회 수': [5000, 3000, 6500, 1000],
+    'CPV 매출': ['1,500,000', '2,000,000', '1,800,000', '500,000']
+}
+example_df = pd.DataFrame(example_data)
+
+# CSV 파일 다운로드를 위한 변환 함수
+@st.cache_data
+def convert_df_to_csv(df):
+    # UTF-8 BOM 인코딩을 사용하여 엑셀에서 한글 깨짐 방지
+    return df.to_csv(index=False, encoding='utf-8-sig')
+
+example_csv = convert_df_to_csv(example_df)
+
+st.header("데이터 업로드")
 uploaded_file = st.file_uploader("분석할 CSV 파일을 업로드해주세요.", type=["csv"])
+
+# 2-2. 예시 CSV 다운로드 버튼 추가
+st.download_button(
+    label="⬇️ 예시 CSV 파일 양식 다운로드",
+    data=example_csv,
+    file_name='CRM_CPV_성과분석_양식.csv',
+    mime='text/csv',
+    help="다운로드 후 이 양식에 맞춰 데이터를 입력하여 업로드하세요."
+)
+st.markdown("---") # 시각적 구분선 추가
+
 
 if uploaded_file is not None:
     # 데이터 로드
@@ -230,28 +264,9 @@ if uploaded_file is not None:
         '현재 조회 수': '조회수',
         '조회수 증감액': '조회수 증감량',
         '조회수 증감률 (%)': '조회수 증감률(%)',
-        '현재 매출': 'CPV매출',             # <-- 추가된 컬럼
+        '현재 매출': 'CPV매출',
         '매출 증감액': 'CPV매출 증감액',
         '매출 증감률 (%)': 'CPV매출 증감률(%)'
     }
 
     final_detailed_df = event_analysis[detailed_cols_map.keys()].rename(columns=detailed_cols_map)
-    
-    # DataFrame 포맷팅: CPV매출 컬럼 포맷 추가 반영
-    st.dataframe(
-        final_detailed_df.style.format({
-            '조회수': "{:,.0f}", 
-            '조회수 증감량': "{:+.0f}",
-            '조회수 증감률(%)': "{:+.2f}%",
-            'CPV매출': "{:,.0f} 원",          # <-- 추가된 컬럼 포맷
-            'CPV매출 증감액': "{:+.0f} 원",
-            'CPV매출 증감률(%)': "{:+.2f}%"
-        }),
-        use_container_width=True,
-        hide_index=True
-    )
-
-
-# 데이터가 업로드되지 않았을 때 안내 메시지
-else:
-    st.info("⬆️ 좌측 상단의 'Browse files' 버튼을 눌러 CSV 파일을 업로드하고 대시보드를 시작하세요.")
