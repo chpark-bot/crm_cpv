@@ -5,27 +5,9 @@ import numpy as np
 import re
 import io # 파일 다운로드를 위해 io 모듈 추가
 
-# --- 1. 대시보드 기본 설정 및 CSS Injection ---
+# --- 1. 대시보드 기본 설정 ---
 st.set_page_config(layout="wide", page_title="[CRM] 이벤트별 CPV 성과분석 대시보드")
 st.title("[CRM] 이벤트별 CPV 성과분석 대시보드")
-
-# === 테이블 헤더 스타일 CSS Injection (추가된 부분) ===
-st.markdown("""
-<style>
-/* 모든 st.dataframe 테이블의 헤더 셀을 타겟합니다. */
-.stDataFrame table thead th {
-    background-color: #8841FA !important; /* 배경색 적용: 요청하신 보라색 */
-    color: #ffffff !important; /* 글자색: 흰색 */
-}
-/* DataFrame 인덱스 헤더 셀 (첫 번째 셀)도 스타일링합니다. */
-.stDataFrame table thead th:first-child {
-    background-color: #8841FA !important;
-    color: #ffffff !important;
-}
-</style>
-""", unsafe_allow_html=True)
-# =======================================================
-
 st.markdown("---")
 
 # 증감율 계산 함수 (문자열 포맷: +10.00%)
@@ -47,12 +29,6 @@ def calculate_rate_num(current, previous, change):
     else:
         return (change / previous) * 100
 
-# CSV 파일 다운로드를 위한 변환 함수 (새로운 캐시 함수 정의)
-@st.cache_data
-def convert_df_to_csv(df):
-    return df.to_csv(index=False, encoding='utf-8-sig')
-
-
 # --- 2. 데이터 업로드 및 예시 파일 제공 ---
 
 # 2-1. 예시 CSV 파일 데이터 생성
@@ -65,6 +41,10 @@ example_data = {
     'CPV 매출': ['1,500,000', '2,000,000', '1,800,000', '500,000']
 }
 example_df = pd.DataFrame(example_data)
+
+@st.cache_data
+def convert_df_to_csv(df):
+    return df.to_csv(index=False, encoding='utf-8-sig')
 
 example_csv = convert_df_to_csv(example_df)
 
