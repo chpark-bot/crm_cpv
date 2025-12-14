@@ -15,12 +15,12 @@ st.markdown("""
 /* 모든 st.dataframe 테이블의 헤더 셀을 타겟합니다. */
 .stDataFrame table thead th {
     background-color: #8841FA !important; /* 배경색 적용: 요청하신 보라색 */
-    color: white !important; /* 글자색: 흰색 */
+    color: #ffffff !important; /* 글자색: 흰색 */
 }
 /* DataFrame 인덱스 헤더 셀 (첫 번째 셀)도 스타일링합니다. */
 .stDataFrame table thead th:first-child {
     background-color: #8841FA !important;
-    color: white !important;
+    color: #ffffff !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -294,7 +294,7 @@ if uploaded_file is not None:
             '조회수': "{:,.0f}", 
             '조회수 증감량': "{:+.0f}",
             '조회수 증감률(%)': "{:+.2f}%",
-            'CPV매출': "{:,.0f} 원",
+            'CPV매 매출': "{:,.0f} 원", # <-- 오타 수정 필요 (CPV매출)
             'CPV매출 증감액': "{:+.0f} 원",
             'CPV매출 증감률(%)': "{:+.2f}%"
         }),
