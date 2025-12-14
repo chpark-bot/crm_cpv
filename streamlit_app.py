@@ -34,6 +34,7 @@ def calculate_rate_num(current, previous, change):
 def convert_df_to_csv(df):
     return df.to_csv(index=False, encoding='utf-8-sig')
 
+
 # --- 2. 데이터 업로드 및 예시 파일 제공 ---
 
 # 2-1. 예시 CSV 파일 데이터 생성
@@ -276,7 +277,7 @@ if uploaded_file is not None:
             '조회수 증감량': "{:+.0f}",
             '조회수 증감률(%)': "{:+.2f}%",
             'CPV매출': "{:,.0f} 원",
-            'CPV매출 증감액': "{:+, .0f} 원", # <-- 수정된 부분: 천단위 콤마(,) 추가
+            'CPV매출 증감액': "{:+,.0f} 원", # <-- 포맷 수정 완료
             'CPV매출 증감률(%)': "{:+.2f}%"
         }),
         use_container_width=True,
