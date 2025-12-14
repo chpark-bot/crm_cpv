@@ -380,7 +380,7 @@ if uploaded_file is not None:
     st.markdown("---")
 
     # ----------------------------------------------------
-    # --- 11. 성과 증가 이벤트 요약 (NEW) ---
+    # --- 11. 성과 증가 이벤트 요약 (NEW) (표 형식으로 수정) ---
     # ----------------------------------------------------
     st.header(":bar_chart: 성과 증가 이벤트 요약")
     
@@ -394,9 +394,22 @@ if uploaded_file is not None:
     increased_revenue_events = len(event_analysis[event_analysis['매출 증감액'] > 0])
     revenue_increase_rate = (increased_revenue_events / total_events) * 100 if total_events > 0 else 0
 
-    st.markdown(f"**전체 이벤트 수:** {total_events}개")
-    st.markdown(f"**이 중 조회수 증가 이벤트:** {increased_views_events}개 (전체 대비 **{views_increase_rate:.2f}%**)")
-    st.markdown(f"**이 중 CPV 매출 증가 이벤트:** {increased_revenue_events}개 (전체 대비 **{revenue_increase_rate:.2f}%**)")
+    # 표로 만들 데이터 생성
+    summary_data = {
+        '구분': ['전체 이벤트 수', '조회수 증가 이벤트', 'CPV 매출 증가 이벤트'],
+        '이벤트 수 (개)': [total_events, increased_views_events, increased_revenue_events],
+        '전체 대비 비율': ['100.00%', 
+                        f"{views_increase_rate:.2f}%", 
+                        f"{revenue_increase_rate:.2f}%"]
+    }
+    summary_df = pd.DataFrame(summary_data)
+    
+    # 표 출력
+    st.dataframe(
+        summary_df,
+        use_container_width=True,
+        hide_index=True
+    )
 
     st.markdown("---")
 
