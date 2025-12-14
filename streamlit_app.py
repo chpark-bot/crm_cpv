@@ -130,7 +130,7 @@ if uploaded_file is not None:
 
 
     # --- 4. 기획전 기간 설정 필터 (사이드바) ---
-    st.sidebar.header(":calendar:기간 설정")
+    st.sidebar.header("📆기간 설정")
 
     start_date_input, end_date_input = st.sidebar.date_input(
         "기획전 진행 기간을 선택하세요:",
