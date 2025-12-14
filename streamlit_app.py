@@ -3,7 +3,8 @@ import pandas as pd
 from datetime import timedelta
 import numpy as np
 import re
-import io # 파일 다운로드를 위해 io 모듈 추가
+import io 
+import requests # requests 모듈은 사용하지 않으므로, 코드는 남기지만 실제 웹훅 코드는 제거됨
 
 # --- 1. 대시보드 기본 설정 ---
 st.set_page_config(layout="wide", page_title="[CRM] 이벤트별 CPV 성과분석 대시보드")
@@ -13,12 +14,12 @@ st.markdown("---")
 # 증감율 계산 함수 (문자열 포맷: +10.00%)
 def calculate_rate_str(current, previous, change):
     if previous == 0 and current > 0:
-        return "+100.00%" 
+        return "+100.00%"
     elif previous == 0 and current == 0:
         return "0.00%"
     else:
         rate = (change / previous) * 100
-        return f"{rate:+.2f}%" 
+        return f"{rate:+.2f}%"
 
 # 증감율 계산 함수 (순수 숫자 값: 10.00)
 def calculate_rate_num(current, previous, change):
@@ -32,7 +33,19 @@ def calculate_rate_num(current, previous, change):
 # CSV 파일 다운로드를 위한 변환 함수 (새로운 캐시 함수 정의)
 @st.cache_data
 def convert_df_to_csv(df):
-    return df.to_csv(index=False, encoding='utf-8-sig')
+    # CSV 다운로드 시 포맷을 유지하기 위해 숫자형 컬럼을 먼저 포맷팅
+    df_formatted = df.copy()
+    
+    # 숫자형/퍼센트 컬럼 포맷팅
+    # (주의: DataFrame이 최종 포맷팅된 상태가 아닌, 숫자형태의 final_detailed_df를 받음)
+    df_formatted['조회수'] = df_formatted['조회수'].apply(lambda x: f"{int(x):,.0f}")
+    df_formatted['조회수 증감량'] = df_formatted['조회수 증감량'].apply(lambda x: f"{int(x):+,}")
+    df_formatted['조회수 증감률(%)'] = df_formatted['조회수 증감률(%)'].apply(lambda x: f"{x:+.2f}%")
+    df_formatted['CPV매출'] = df_formatted['CPV매출'].apply(lambda x: f"{int(x):,} 원")
+    df_formatted['CPV매출 증감액'] = df_formatted['CPV매출 증감액'].apply(lambda x: f"{int(x):+} 원")
+    df_formatted['CPV매출 증감률(%)'] = df_formatted['CPV매출 증감률(%)'].apply(lambda x: f"{x:+.2f}%")
+    
+    return df_formatted.to_csv(index=False, encoding='utf-8-sig')
 
 
 # --- 2. 데이터 업로드 및 예시 파일 제공 ---
@@ -130,7 +143,6 @@ if uploaded_file is not None:
         st.stop()
         
     # --- 5. 이전 동기간 계산 ---
-    
     period_duration = end_date - start_date
     prev_end_date = start_date - timedelta(days=1)
     prev_start_date = prev_end_date - period_duration
@@ -252,10 +264,10 @@ if uploaded_file is not None:
     st.markdown("---")
 
 
-    # --- 10. 이벤트별 상세 성과 테이블 (NEW) ---
+    # --- 10. 이벤트별 상세 성과 테이블 ---
     st.header(":clipboard: 이벤트별 상세 성과")
     
-    # 최종 테이블 컬럼 매핑 및 정리 (CPV매출 컬럼 추가 반영)
+    # 최종 테이블 컬럼 매핑 및 정리
     detailed_cols_map = {
         '이벤트명': '이벤트명',
         '병원명': '병원명',
@@ -270,20 +282,33 @@ if uploaded_file is not None:
 
     final_detailed_df = event_analysis[detailed_cols_map.keys()].rename(columns=detailed_cols_map)
     
-    # DataFrame 포맷팅: CPV매출 컬럼 포맷 추가 반영 (CPV매출 증감액에 천단위 콤마 추가)
+    # DataFrame 시각화 (Styler 사용)
     st.dataframe(
         final_detailed_df.style.format({
             '조회수': "{:,.0f}", 
             '조회수 증감량': "{:+.0f}",
             '조회수 증감률(%)': "{:+.2f}%",
             'CPV매출': "{:,.0f} 원",
-            'CPV매출 증감액': "{:+,.0f} 원", # <-- 포맷 수정 완료
+            'CPV매출 증감액': "{:+,.0f} 원",
             'CPV매출 증감률(%)': "{:+.2f}%"
         }),
         use_container_width=True,
         hide_index=True
     )
+    
+    # ----------------------------------------------------
+    # :sparkles: 이벤트 상세 성과 테이블 CSV 다운로드 버튼 (복구)
+    # ----------------------------------------------------
+    st.download_button(
+        label="⬇️ 상세 성과 테이블 CSV 다운로드",
+        data=convert_df_to_csv(final_detailed_df),
+        file_name=f'CRM_CPV_상세성과_{start_date.strftime("%Y%m%d")}_{end_date.strftime("%Y%m%d")}.csv',
+        mime='text/csv',
+    )
+    
+    st.markdown("---")
 
+    # 웹훅 전송 버튼/코드 제거됨
 
 # 데이터가 업로드되지 않았을 때 안내 메시지
 else:
