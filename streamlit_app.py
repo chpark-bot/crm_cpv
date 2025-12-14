@@ -5,7 +5,7 @@ import numpy as np
 import re
 
 # --- 1. 대시보드 기본 설정 ---
-st.set_page_config(layout="wide", page_title="이벤트 성과 분석 대시보드", favicon="https://i.postimg.cc/bNQdzqGR/logo-(2).png")
+st.set_page_config(layout="wide", page_title="이벤트 성과 분석 대시보드")
 st.title("바비톡 이벤트 성과 분석 대시보드")
 st.markdown("---")
 
