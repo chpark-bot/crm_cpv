@@ -379,6 +379,27 @@ if uploaded_file is not None:
     
     st.markdown("---")
 
+    # ----------------------------------------------------
+    # --- 11. 성과 증가 이벤트 요약 (NEW) ---
+    # ----------------------------------------------------
+    st.header(":bar_chart: 성과 증가 이벤트 요약")
+    
+    total_events = len(event_analysis)
+    
+    # 1. 조회수 증가 이벤트 계산
+    increased_views_events = len(event_analysis[event_analysis['조회수 증감액'] > 0])
+    views_increase_rate = (increased_views_events / total_events) * 100 if total_events > 0 else 0
+    
+    # 2. CPV 매출 증가 이벤트 계산
+    increased_revenue_events = len(event_analysis[event_analysis['매출 증감액'] > 0])
+    revenue_increase_rate = (increased_revenue_events / total_events) * 100 if total_events > 0 else 0
+
+    st.markdown(f"**전체 이벤트 수:** {total_events}개")
+    st.markdown(f"**이 중 조회수 증가 이벤트:** {increased_views_events}개 (전체 대비 **{views_increase_rate:.2f}%**)")
+    st.markdown(f"**이 중 CPV 매출 증가 이벤트:** {increased_revenue_events}개 (전체 대비 **{revenue_increase_rate:.2f}%**)")
+
+    st.markdown("---")
+
 
 # 데이터가 업로드되지 않았을 때 안내 메시지
 else:
