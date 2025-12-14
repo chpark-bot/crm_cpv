@@ -3,7 +3,8 @@ import pandas as pd
 from datetime import timedelta
 import numpy as np
 import re
-import io # 파일 다운로드를 위해 io 모듈 추가
+import io
+import base64 # CSV 데이터를 인코딩하여 HTML 링크를 만들기 위해 base64 모듈 추가
 
 # --- 1. 대시보드 기본 설정 ---
 st.set_page_config(layout="wide", page_title="[CRM] 이벤트별 CPV 성과분석 대시보드")
@@ -301,14 +302,29 @@ if uploaded_file is not None:
     )
 
     # ----------------------------------------------------
-    # :sparkles: CSV 다운로드 버튼 추가
+    # :sparkles: CSV 다운로드 버튼 (리프레시 방지용으로 수정)
     # ----------------------------------------------------
-    st.download_button(
-        label="⬇️ 상세 성과 테이블 CSV 다운로드",
-        data=convert_df_to_csv(final_detailed_df),
-        file_name=f'CRM_CPV_상세성과_{start_date.strftime("%Y%m%d")}_{end_date.strftime("%Y%m%d")}.csv',
-        mime='text/csv',
-    )
+    
+    # 1. CSV 데이터 생성
+    csv_data = convert_df_to_csv(final_detailed_df)
+    b64 = base64.b64encode(csv_data.encode()).decode()
+    
+    # 2. 파일 이름 생성
+    file_name = f'CRM_CPV_상세성과_{start_date.strftime("%Y%m%d")}_{end_date.strftime("%Y%m%d")}.csv'
+    
+    # 3. HTML 링크 생성
+    href = f'''
+    <a href="data:file/csv;base64,{b64}" download="{file_name}"
+       style="display: inline-flex; align-items: center; justify-content: center; 
+              background-color: rgb(240, 242, 246); color: rgb(38, 39, 48); 
+              padding: 0.25rem 0.75rem; border-radius: 0.5rem; border: 1px solid rgba(49, 51, 63, 0.2); 
+              text-decoration: none; font-size: 14px; margin-top: 1rem;">
+        ⬇️ 상세 성과 테이블 CSV 다운로드
+    </a>
+    '''
+    
+    # 4. Streamlit에 HTML 렌더링
+    st.markdown(href, unsafe_allow_html=True)
     
     st.markdown("---")
 
