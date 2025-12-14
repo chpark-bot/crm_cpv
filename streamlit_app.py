@@ -5,7 +5,7 @@ import numpy as np
 import re
 
 # --- 1. 대시보드 기본 설정 ---
-st.set_page_config(layout="wide", page_title="이벤트 성과 분석 대시보드")
+st.set_page_config(layout="wide", page_title="[CRM] 이벤트별 CPV 성과분석 대시보드")
 st.title("바비톡 이벤트 성과 분석 대시보드")
 st.markdown("---")
 
@@ -167,7 +167,7 @@ if uploaded_file is not None:
     views_rate_str = calculate_rate_str(current_views, prev_views, views_change)
     revenue_rate_str = calculate_rate_str(current_revenue, prev_revenue, revenue_change)
     
-    st.header("📈 기획전 성과 증감 분석")
+    st.header("📈 기획전 기간 성과 증감 분석")
     
     col1, col2 = st.columns(2)
     
@@ -189,7 +189,7 @@ if uploaded_file is not None:
 
     # --- 9. TOP 3 랭킹 ---
     
-    st.header("🏆 이벤트 TOP 3 랭킹 (선택 기간)")
+    st.header("🏆 이벤트 TOP 3 랭킹 (기획전 기간)")
     
     # 랭킹 테이블 출력을 위한 포맷된 컬럼 생성
     event_analysis['CPV 조회 수 (랭킹용)'] = event_analysis.apply(
