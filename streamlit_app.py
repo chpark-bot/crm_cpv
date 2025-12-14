@@ -3,12 +3,16 @@ import pandas as pd
 from datetime import timedelta
 import numpy as np
 import re
-import io # 파일 다운로드를 위해 io 모듈 추가
+import io 
+import requests # Make(웹훅) 전송을 위해 requests 라이브러리 추가
 
 # --- 1. 대시보드 기본 설정 ---
 st.set_page_config(layout="wide", page_title="[CRM] 이벤트별 CPV 성과분석 대시보드")
 st.title("[CRM] 이벤트별 CPV 성과분석 대시보드")
 st.markdown("---")
+
+# Make Webhook URL
+MAKE_WEBHOOK_URL = "https://hook.eu1.make.com/9lo7efi4klaw9jvc2ztjbif68bjthr2v"
 
 # 증감율 계산 함수 (문자열 포맷: +10.00%)
 def calculate_rate_str(current, previous, change):
@@ -34,6 +38,15 @@ def calculate_rate_num(current, previous, change):
 def convert_df_to_csv(df):
     return df.to_csv(index=False, encoding='utf-8-sig')
 
+# --- Make로 데이터 전송하는 함수 ---
+def send_to_make(payload):
+    """Make Webhook으로 데이터를 전송하는 함수"""
+    try:
+        response = requests.post(MAKE_WEBHOOK_URL, json=payload, timeout=10) # 10초 타임아웃 설정
+        return response
+    except requests.exceptions.RequestException as e:
+        st.error(f"Make로 데이터 전송 중 네트워크 오류가 발생했습니다: {e}")
+        return None
 
 # --- 2. 데이터 업로드 및 예시 파일 제공 ---
 
@@ -68,6 +81,8 @@ if uploaded_file is not None:
     # 데이터 로드
     try:
         df = pd.read_csv(uploaded_file)
+        # 파일명을 추출하여 변수에 저장
+        file_name = uploaded_file.name
     except Exception as e:
         st.error(f"CSV 파일을 읽는 중 오류가 발생했습니다. 파일 인코딩(UTF-8 추천) 또는 형식을 확인해주세요: {e}")
         st.stop()
@@ -270,7 +285,7 @@ if uploaded_file is not None:
 
     final_detailed_df = event_analysis[detailed_cols_map.keys()].rename(columns=detailed_cols_map)
     
-    # DataFrame 포맷팅: CPV매출 컬럼 포맷 추가 반영 (CPV매출 증감액에 천단위 콤마 추가)
+    # DataFrame 포맷팅
     st.dataframe(
         final_detailed_df.style.format({
             '조회수': "{:,.0f}", 
@@ -283,6 +298,45 @@ if uploaded_file is not None:
         use_container_width=True,
         hide_index=True
     )
+    
+    st.markdown("---")
+    
+    # --- 11. 노션 보고서 전송 버튼 ---
+    st.header("자동 보고서 생성")
+    
+    if st.button("📝 노션에 보고서 만들기 (Make 연동)"):
+        
+        # 상세 데이터를 Markdown 테이블 형식의 문자열로 변환 (노션 페이지에 붙여넣기 용이)
+        # HTML을 노션 블록으로 변환하는 모듈이 Make에 있으므로, HTML로 변환하는 것이 가장 안전함.
+        
+        # 1. 콤마 포맷팅이 적용된 테이블을 마크다운/HTML로 변환
+        # Pandas Styler를 사용해 HTML로 변환합니다.
+        styled_html = final_detailed_df.style.format({
+            '조회수': "{:,.0f}", 
+            '조회수 증감량': "{:+.0f}",
+            '조회수 증감률(%)': "{:+.2f}%",
+            'CPV매출': "{:,.0f} 원",
+            'CPV매출 증감액': "{:+,.0f} 원",
+            'CPV매출 증감률(%)': "{:+.2f}%"
+        }).to_html(index=False)
+        
+        # 2. 전송할 데이터 페이로드 구성
+        report_data = {
+            "page_title": file_name, # CSV 파일명을 페이지 제목으로 사용
+            "analysis_period": f"{start_date.strftime('%Y-%m-%d')} ~ {end_date.strftime('%Y-%m-%d')}",
+            "total_revenue": f"{int(current_revenue):,} 원",
+            "revenue_change_rate": revenue_rate_str,
+            "detail_table_html": styled_html # HTML 테이블 문자열 전송
+        }
+        
+        # 데이터 전송
+        with st.spinner('노션 보고서를 생성 중입니다...'):
+            response = send_to_make(report_data)
+
+            if response and response.status_code in [200, 201]:
+                st.success("✅ 보고서 데이터가 Make로 성공적으로 전송되었습니다! Make 시나리오를 확인하여 노션 페이지가 생성되었는지 확인하세요.")
+            elif response is not None:
+                st.error(f"❌ Make로 데이터 전송에 실패했습니다. (응답 코드: {response.status_code}). Make 시나리오에서 오류를 확인하세요.")
 
 
 # 데이터가 업로드되지 않았을 때 안내 메시지
