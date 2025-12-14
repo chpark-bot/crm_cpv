@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import timedelta
 import numpy as np
 import re
-import io # 파일 다운로드를 위해 io 모듈 추가
+import io 
 
 # --- 1. 대시보드 기본 설정 ---
 st.set_page_config(layout="wide", page_title="[CRM] 이벤트별 CPV 성과분석 대시보드")
@@ -29,6 +29,13 @@ def calculate_rate_num(current, previous, change):
     else:
         return (change / previous) * 100
 
+# CSV 파일 다운로드를 위한 변환 함수 (새로운 캐시 함수 정의)
+@st.cache_data
+def convert_df_to_csv(df):
+    # UTF-8 BOM 인코딩을 사용하여 엑셀에서 한글 깨짐 방지
+    return df.to_csv(index=False, encoding='utf-8-sig')
+
+
 # --- 2. 데이터 업로드 및 예시 파일 제공 ---
 
 # 2-1. 예시 CSV 파일 데이터 생성
@@ -41,10 +48,6 @@ example_data = {
     'CPV 매출': ['1,500,000', '2,000,000', '1,800,000', '500,000']
 }
 example_df = pd.DataFrame(example_data)
-
-@st.cache_data
-def convert_df_to_csv(df):
-    return df.to_csv(index=False, encoding='utf-8-sig')
 
 example_csv = convert_df_to_csv(example_df)
 
@@ -253,7 +256,7 @@ if uploaded_file is not None:
     # --- 10. 이벤트별 상세 성과 테이블 (NEW) ---
     st.header("📋 이벤트별 상세 성과")
     
-    # 최종 테이블 컬럼 매핑 및 정리 (CPV매출 컬럼 추가 반영)
+    # 최종 테이블 컬럼 매핑 및 정리 
     detailed_cols_map = {
         '이벤트명': '이벤트명',
         '병원명': '병원명',
@@ -266,9 +269,25 @@ if uploaded_file is not None:
         '매출 증감률 (%)': 'CPV매출 증감률(%)'
     }
 
+    # 10-1. 시각적 포맷팅을 위한 데이터프레임
     final_detailed_df = event_analysis[detailed_cols_map.keys()].rename(columns=detailed_cols_map)
     
-    # DataFrame 포맷팅: CPV매출 컬럼 포맷 추가 반영
+    # 10-2. 다운로드 기능을 위한 데이터프레임 (순수 데이터로 준비)
+    download_df = final_detailed_df.copy()
+    download_df['CPV매출'] = download_df['CPV매출'].round(0).astype(int)
+    download_df['CPV매출 증감액'] = download_df['CPV매출 증감액'].round(0).astype(int)
+    download_df['조회수 증감률(%)'] = download_df['조회수 증감률(%)'].round(2)
+    download_df['CPV매출 증감률(%)'] = download_df['CPV매출 증감률(%)'].round(2)
+    
+    # 다운로드 버튼 추가
+    st.download_button(
+        label="⬇️ 이벤트별 상세 성과 CSV 다운로드",
+        data=convert_df_to_csv(download_df),
+        file_name='이벤트별_상세_성과_분석.csv',
+        mime='text/csv',
+    )
+    
+    # DataFrame 포맷팅: 시각적으로 보여주기 위한 포맷
     st.dataframe(
         final_detailed_df.style.format({
             '조회수': "{:,.0f}", 
@@ -281,8 +300,47 @@ if uploaded_file is not None:
         use_container_width=True,
         hide_index=True
     )
+    
+    st.markdown("---")
+
+
+    # --- 11. AI 기반 성과 인사이트 (LLM 제외) ---
+    st.header("💡 AI 기반 성과 인사이트")
+    st.info("AI 기능은 유료 API 연동이 필요하므로 현재는 비활성화되었습니다. 전체 성과 데이터를 기반으로 한 분석 템플릿만 표시됩니다.")
+    
+    # 11-1. LLM에 전달할 데이터 준비 (템플릿용)
+    if not event_analysis.empty:
+        # TOP 1 이벤트 데이터 추출 (9번 섹션에서 사용된 데이터 재활용)
+        top_revenue_data = event_analysis.sort_values(by='현재 매출', ascending=False).iloc[0]
+        top_revenue_name = top_revenue_data['이벤트명']
+        top_revenue_value = top_revenue_data['현재 매출']
+        
+        ai_prompt_text = event_analysis[['이벤트명', '병원명', '현재 조회 수', '현재 매출', '조회수 증감률 (%)', '매출 증감률 (%)']].to_string(index=False)
+        
+        # --- LLM 인사이트 Placeholder ---
+        ai_insight_text = f"""
+        ### 분석 요약 (Summary)
+        
+        #### 🔍 핵심 요약
+        - **분석 기간**: {start_date.strftime('%Y-%m-%d')} ~ {end_date.strftime('%Y-%m-%d')}
+        - **전체 성과**: 총 CPV 매출은 **{int(current_revenue):,} 원**으로, 이전 동기간 대비 **{revenue_rate_str}**의 변화율을 기록했습니다.
+        - **최고 성과 이벤트**: **'{top_revenue_name}'**이(가) 매출 **{int(top_revenue_value):,} 원**을 기록하며 성과를 견인하는 데 핵심 역할을 수행했습니다.
+        
+        #### 📊 이벤트별 상세 데이터
+        아래 데이터는 AI 분석을 위한 원천 데이터입니다.
+        
+        ```
+{ai_prompt_text}
+        ```
+        """
+        st.subheader("성과 분석 보고 (템플릿)")
+        st.markdown(ai_insight_text)
+    else:
+        st.warning("분석 데이터가 없어 AI 인사이트를 표시할 수 없습니다.")
+        
+    st.markdown("---")
 
 
 # 데이터가 업로드되지 않았을 때 안내 메시지
 else:
-    st.info("⬆️ 좌측 상단의 'Browse files' 버튼을 눌러 CSV 파일을 업로드하고 대시보드를 시작하세요.")
+    st.info("⬆️ '데이터 업로드' 섹션에서 CSV 파일을 업로드하고 대시보드를 시작하세요.")
