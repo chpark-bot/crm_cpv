@@ -6,7 +6,7 @@ import re
 
 # --- 1. 대시보드 기본 설정 ---
 st.set_page_config(layout="wide", page_title="[CRM] 이벤트별 CPV 성과분석 대시보드")
-st.title("바비톡 이벤트 성과 분석 대시보드")
+st.title("[CRM] 이벤트별 CPV 성과분석 대시보드")
 st.markdown("---")
 
 # 증감율 계산 함수 (문자열 포맷: +10.00%)
